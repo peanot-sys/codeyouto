@@ -8,9 +8,13 @@ export function validateUrl(url: string): { valid: boolean; error?: string } {
     return { valid: false, error: 'Please enter a URL' };
   }
   
-  try {
-    new URL(trimmed);
-  } catch {
+  // Basic URL format check
+  if (!trimmed.includes('.') || (!trimmed.includes('http') && !trimmed.includes('://'))) {
+    // Allow pasting just video IDs or partial URLs
+    if (trimmed.match(/^[a-zA-Z0-9_-]{11}$/)) {
+      // Looks like a YouTube video ID
+      return { valid: true };
+    }
     return { valid: false, error: 'Please enter a valid YouTube or Instagram URL.' };
   }
   

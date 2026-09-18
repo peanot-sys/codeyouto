@@ -1,47 +1,130 @@
-import { MediaInfo, Platform } from '../types/media';
+import { MediaInfo, Platform, VideoQuality, AudioFormat, AudioQuality } from '../types/media';
 import { detectPlatform } from '../utils/platform';
-import { api } from './api';
 
-// Demo media info for when backend is not available
-function generateDemoMediaInfo(url: string): MediaInfo {
-  const platform = detectPlatform(url) || 'youtube';
-  const isInstagram = platform === 'instagram';
+// Extract YouTube video ID from various URL formats
+export function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
   
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+// Extract Instagram shortcode from URL
+export function extractInstagramShortcode(url: string): string | null {
+  const patterns = [
+    /instagram\.com\/(?:p|reel|tv)\/([a-zA-Z0-9_-]+)/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+// Fetch YouTube video info via oEmbed (no API key needed, CORS-friendly)
+async function fetchYouTubeInfo(videoId: string, url: string): Promise<MediaInfo> {
+  const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`;
+  
+  try {
+    const response = await fetch(oembedUrl);
+    if (!response.ok) throw new Error('Failed to fetch');
+    const data = await response.json();
+    
+    return {
+      id: videoId,
+      url,
+      platform: 'youtube',
+      title: data.title || 'YouTube Video',
+      thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      duration: 0, // oEmbed doesn't provide duration, we'll handle this
+      creator: data.author_name || data.author_url?.split('/').pop(),
+      availableVideoQualities: ['360p', '480p', '720p', '1080p'] as VideoQuality[],
+      availableAudioFormats: ['mp3', 'm4a'] as AudioFormat[],
+      availableAudioQualities: ['128kbps', '192kbps', '256kbps', '320kbps'] as AudioQuality[],
+    };
+  } catch (error) {
+    // Fallback if oEmbed fails
+    return {
+      id: videoId,
+      url,
+      platform: 'youtube',
+      title: 'YouTube Video',
+      thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+      duration: 0,
+      creator: undefined,
+      availableVideoQualities: ['360p', '480p', '720p', '1080p'] as VideoQuality[],
+      availableAudioFormats: ['mp3', 'm4a'] as AudioFormat[],
+      availableAudioQualities: ['128kbps', '192kbps', '256kbps', '320kbps'] as AudioQuality[],
+    };
+  }
+}
+
+// Fetch Instagram info (limited without API)
+function fetchInstagramInfo(shortcode: string, url: string): MediaInfo {
   return {
-    id: crypto.randomUUID?.() || Math.random().toString(36).slice(2),
+    id: shortcode,
     url,
-    platform,
-    title: isInstagram
-      ? 'Instagram Reel - Beautiful Sunset Timelapse'
-      : 'Amazing Nature Documentary - 4K Ultra HD',
-    thumbnail: isInstagram
-      ? 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&h=400&fit=crop'
-      : 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=640&h=360&fit=crop',
-    duration: isInstagram ? 45 : 632,
-    creator: isInstagram ? '@naturelover' : 'Nature Channel',
-    availableVideoQualities: isInstagram ? ['360p', '480p', '720p'] : ['360p', '480p', '720p', '1080p'],
-    availableAudioFormats: ['mp3', 'm4a'],
-    availableAudioQualities: ['128kbps', '192kbps', '256kbps', '320kbps'],
+    platform: 'instagram',
+    title: 'Instagram Reel',
+    thumbnail: '',
+    duration: 60, // Default estimate
+    creator: undefined,
+    availableVideoQualities: ['360p', '480p', '720p'] as VideoQuality[],
+    availableAudioFormats: ['mp3', 'm4a'] as AudioFormat[],
+    availableAudioQualities: ['128kbps', '192kbps', '256kbps', '320kbps'] as AudioQuality[],
   };
 }
 
 export async function analyzeMedia(url: string): Promise<MediaInfo> {
-  // Try backend first
-  const response = await api.analyze(url);
+  const platform = detectPlatform(url);
   
-  if (response.success && response.data) {
-    return response.data as MediaInfo;
+  if (platform === 'youtube') {
+    const videoId = extractYouTubeId(url);
+    if (!videoId) throw new Error('Invalid YouTube URL');
+    return fetchYouTubeInfo(videoId, url);
   }
   
-  // Fallback to demo data if backend is not available
-  console.log('Backend not available, using demo data');
-  return generateDemoMediaInfo(url);
+  if (platform === 'instagram') {
+    const shortcode = extractInstagramShortcode(url);
+    if (!shortcode) throw new Error('Invalid Instagram URL');
+    return fetchInstagramInfo(shortcode, url);
+  }
+  
+  throw new Error('Unsupported platform');
 }
 
-export async function getDownloadStatus(jobId: string) {
-  return api.getStatus(jobId);
+// Get YouTube embed URL with start/end parameters
+export function getYouTubeEmbedUrl(videoId: string, startTime?: number, endTime?: number): string {
+  let url = `https://www.youtube.com/embed/${videoId}`;
+  const params: string[] = [];
+  
+  if (startTime !== undefined && startTime > 0) {
+    params.push(`start=${Math.floor(startTime)}`);
+  }
+  if (endTime !== undefined && endTime > 0) {
+    params.push(`end=${Math.floor(endTime)}`);
+  }
+  
+  if (params.length > 0) {
+    url += '?' + params.join('&');
+  }
+  
+  return url;
 }
 
+// Get Instagram embed URL
+export function getInstagramEmbedUrl(shortcode: string): string {
+  return `https://www.instagram.com/reel/${shortcode}/embed`;
+}
+
+// Download functions (require backend for actual processing)
 export async function startDownload(settings: {
   url: string;
   type: string;
@@ -50,23 +133,45 @@ export async function startDownload(settings: {
   startTime: number;
   endTime: number;
 }) {
-  const response = await api.download(settings);
+  const API_URL = import.meta.env.VITE_API_URL || '';
   
-  if (response.success && response.data) {
-    return response.data;
+  if (API_URL) {
+    try {
+      const response = await fetch(`${API_URL}/api/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (response.ok) {
+        return response.json();
+      }
+    } catch (e) {
+      // Fall through to demo
+    }
   }
   
-  // Simulate download for demo purposes
-  return simulateDownload(settings);
-}
-
-async function simulateDownload(settings: any) {
-  const jobId = crypto.randomUUID?.() || Math.random().toString(36).slice(2);
-  
-  // Return a simulated job
+  // Demo mode - simulate processing
+  const jobId = Math.random().toString(36).slice(2);
   return {
     jobId,
     status: 'processing',
     filename: `media_clip_${Date.now()}.${settings.type === 'audio' ? settings.format : 'mp4'}`,
   };
+}
+
+export async function getDownloadStatus(jobId: string) {
+  const API_URL = import.meta.env.VITE_API_URL || '';
+  
+  if (API_URL) {
+    try {
+      const response = await fetch(`${API_URL}/api/status/${jobId}`);
+      if (response.ok) {
+        return { success: true, data: await response.json() };
+      }
+    } catch (e) {
+      // Fall through
+    }
+  }
+  
+  return { success: false, data: null };
 }
