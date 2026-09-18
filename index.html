@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MediaDrop - Download Videos & Audio</title>
+    <meta name="description" content="Download videos and audio from YouTube and Instagram. Fast, simple, and private." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+      html.light, html.light body { background-color: #f8f9fa !important; color: #1a1a2e; }
+      html.dark, html.dark body { background-color: #0f0f1a !important; color: #f0f0f5; }
+    </style>
+    <script>
+      (function () {
+        const isInIframe = window.self !== window.top;
+        function applyThemeToDOM(theme) {
+          document.documentElement.classList.remove("light", "dark");
+          document.documentElement.classList.add(theme);
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+        if (isInIframe) {
+          window.addEventListener("message", function (event) {
+            if (event.data && typeof event.data.theme === "string") {
+              const theme = event.data.theme;
+              if (theme === "light" || theme === "dark") { applyThemeToDOM(theme); }
+            }
+          });
+          applyThemeToDOM("light");
+        } else {
+          const saved = localStorage.getItem("theme");
+          if (saved === "light" || saved === "dark") { applyThemeToDOM(saved); }
+          else if (window.matchMedia("(prefers-color-scheme: dark)").matches) { applyThemeToDOM("dark"); }
+          else { applyThemeToDOM("light"); }
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
