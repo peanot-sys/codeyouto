@@ -1,111 +1,97 @@
 # MediaDrop
 
-A modern, responsive media downloader website built with React, Vite, and Tailwind CSS.
+A modern, responsive media downloader that **actually works**. Download YouTube videos and audio directly from your browser.
+
+## ✅ What Works Right Now
+
+### YouTube (Fully Working)
+- **Real video info** - Title, thumbnail, duration, creator (via Invidious API)
+- **Real video preview** - Embedded YouTube player with start/end time support
+- **Real downloads** - Direct download links for video (MP4) and audio
+- **Multiple qualities** - 360p, 480p, 720p, 1080p (whatever's available)
+- **All URL formats** - Regular videos, Shorts, youtu.be links
+
+### Instagram
+- **Video preview** - Embedded Instagram player
+- **Download** - Limited (Instagram has strong protections)
 
 ## How It Works
 
-### What works out of the box (no backend needed):
-- ✅ **YouTube video info** - Fetches real title, thumbnail, and creator via YouTube's oEmbed API
-- ✅ **YouTube video preview** - Embeds actual YouTube player with start/end time support
-- ✅ **Instagram embed** - Shows Instagram reels/posts via embed
-- ✅ **Platform detection** - Automatically detects YouTube (videos, shorts) and Instagram (reels)
-- ✅ **Timeline editor** - Interactive start/end selection with draggable handles
-- ✅ **Theme switching** - Light, Dark, and System modes
+1. Paste a YouTube URL
+2. The app fetches real video info via Invidious API (through CORS proxy)
+3. Shows thumbnail, title, duration, available qualities
+4. Select video or audio mode
+5. Pick quality
+6. Use the timeline to select start/end (optional)
+7. Preview the selection in the embedded player
+8. Click Download - get a direct download link
 
-### What needs a backend for actual downloads:
-- ⚠️ **Downloading video/audio files** - Requires a backend API with FFmpeg
-- ⚠️ **Video duration detection** - YouTube oEmbed doesn't provide duration
-- ⚠️ **Audio extraction** - Requires server-side processing
+## Tech Stack
 
-## Quick Start
+- **React 18** + TypeScript
+- **Vite** for fast builds
+- **Tailwind CSS v4** for styling
+- **Invidious API** for YouTube data and stream URLs
+- **CORS Proxy** (corsproxy.io) for browser-based API calls
+- **Lucide React** for icons
+
+## How Downloads Work
+
+The app uses **Invidious** (open-source YouTube frontend) to:
+1. Get video metadata (title, thumbnail, duration)
+2. Get direct stream URLs for different qualities
+3. Proxy the download through Invidious servers
+
+This means **no backend needed** - it works entirely from the browser!
+
+## Deployment
+
+Already configured for Netlify via GitHub:
+
+```toml
+[build]
+  command = "npm run build"
+  publish = "dist"
+```
+
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open the app and paste a YouTube URL like:
-- `https://www.youtube.com/watch?v=dQw4w9WgXcQ`
-- `https://youtu.be/dQw4w9WgXcQ`
-- `https://www.youtube.com/shorts/xxxxx`
-
-The video will load with its real title and thumbnail, and you can watch it in the embedded player.
-
-## Backend Setup (for actual downloads)
-
-To enable actual file downloads, you need a backend server that:
-
-1. Accepts URLs and returns media info (title, duration, available qualities)
-2. Downloads the media using yt-dlp or similar
-3. Processes with FFmpeg for trimming and format conversion
-4. Serves the processed file for download
-
-### API Endpoints needed:
-
-```
-POST /api/analyze
-Body: { "url": "https://youtube.com/watch?v=..." }
-Response: { "id": "...", "title": "...", "thumbnail": "...", "duration": 123, ... }
-
-POST /api/download
-Body: { "url": "...", "type": "video", "format": "mp4", "quality": "720p", "startTime": 10, "endTime": 30 }
-Response: { "jobId": "...", "status": "processing" }
-
-GET /api/status/:jobId
-Response: { "status": "success", "downloadUrl": "...", "filename": "clip.mp4", "fileSize": "5.2 MB" }
-```
-
-### Environment Variables:
+## Build
 
 ```bash
-# .env
-VITE_API_URL=http://localhost:3000  # Your backend URL
+npm run build
 ```
 
-## Deployment
+## Limitations
 
-The project is configured for Netlify:
+- **YouTube**: Works great for most videos. Some age-restricted or private videos may not work.
+- **Instagram**: Preview works, but downloads are limited due to Instagram's protections.
+- **Duration**: If Invidious can't determine duration, defaults to 5 minutes. Adjust timeline manually.
+- **CORS Proxies**: Uses public CORS proxies. If they're down, the app may not work. You can self-host a proxy or Invidious instance.
 
-```toml
-[build]
-  command = "npm run build"
-  publish = "dist"
+## Self-Hosting
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-```
+For maximum reliability, you can:
 
-## Tech Stack
+1. **Host your own Invidious instance** and set it as the primary
+2. **Host your own CORS proxy** (e.g., cors-anywhere)
+3. **Deploy a backend** that uses yt-dlp + FFmpeg for processing
 
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS v4
-- Lucide React (icons)
-- YouTube oEmbed API (for video info)
-- YouTube Iframe Embed (for preview)
+Edit `src/services/mediaService.ts` to change the Invidious instances and CORS proxies.
 
-## Project Structure
+## Privacy
 
-```
-src/
-├── components/     # UI components
-├── hooks/          # Custom React hooks
-├── services/       # API and media services
-├── types/          # TypeScript types
-├── utils/          # Utility functions
-├── App.tsx         # Main app
-├── main.tsx        # Entry point
-└── index.css       # Styles + theme
-```
+- No accounts required
+- No download history stored
+- No personal data collected
+- All processing happens in your browser
+- Temporary API calls only
 
-## Features
+## License
 
-- 🎬 Real YouTube video info and embedded preview
-- 🎵 Video or Audio download options
-- ✂️ Interactive timeline with draggable handles
-- 📱 Fully responsive (mobile, tablet, desktop)
-- 🌓 Light/Dark/System themes
-- 🔒 Privacy-first (no accounts, no history)
-- ⚡ Fast, glassmorphism UI with smooth animations
+MIT

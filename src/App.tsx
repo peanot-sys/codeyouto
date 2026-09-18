@@ -80,15 +80,19 @@ function App() {
       endTime,
     };
 
-    await download(mediaInfo.url, settings);
+    await download(mediaInfo, settings);
   }, [mediaInfo, mediaType, audioFormat, videoQuality, audioQuality, startTime, endTime, download]);
 
   const handleDownloadFile = useCallback(() => {
     if (result?.downloadUrl) {
-      window.open(result.downloadUrl, '_blank');
-    } else {
-      // Demo: show message about needing backend
-      alert('To enable actual downloads, please connect a backend API.\n\nSet VITE_API_URL in your environment variables to point to your media processing server.');
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = result.downloadUrl;
+      link.download = result.filename || 'video.mp4';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   }, [result]);
 
@@ -247,10 +251,10 @@ function App() {
               isProcessing={isProcessing}
             />
 
-            {/* Backend notice */}
+            {/* Info notice */}
             <div className="glass-card-sm p-4 text-center animate-fade-in">
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                💡 Video preview works via YouTube embed. For actual downloads, connect a backend API.
+                💡 Powered by Invidious. Supports YouTube videos, shorts, and music.
               </p>
             </div>
           </div>

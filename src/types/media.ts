@@ -39,6 +39,9 @@ export interface MediaInfo {
   availableVideoQualities: VideoQuality[];
   availableAudioFormats: AudioFormat[];
   availableAudioQualities: AudioQuality[];
+  // Internal fields for download
+  _rawData?: any;
+  _instance?: string;
 }
 
 export interface DownloadSettings {
