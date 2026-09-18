@@ -32,8 +32,8 @@ export function useMediaInfo(): UseMediaInfoReturn {
       const info = await analyzeMedia(url);
       setMediaInfo(info);
       setStatus('media-loaded');
-    } catch (err) {
-      setError('This media could not be accessed. Please check the URL and try again.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to analyze media. Backend service may be unavailable.');
       setStatus('error');
     }
   }, []);

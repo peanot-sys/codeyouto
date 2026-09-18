@@ -3,7 +3,7 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
-  error?: { code: string; message: string };
+  error?: string;
 }
 
 async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> {
@@ -17,26 +17,20 @@ async function request<T>(endpoint: string, options?: RequestInit): Promise<ApiR
       ...options,
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
       return {
         success: false,
-        error: {
-          code: `HTTP_${response.status}`,
-          message: errorData?.message || `Request failed with status ${response.status}`,
-        },
+        error: data.error || `Request failed with status ${response.status}`,
       };
     }
 
-    const data = await response.json();
     return { success: true, data };
   } catch (err) {
     return {
       success: false,
-      error: {
-        code: 'NETWORK_ERROR',
-        message: 'Connection interrupted. Please check your internet connection.',
-      },
+      error: 'Backend service is currently unavailable. Please try again later.',
     };
   }
 }
@@ -48,7 +42,14 @@ export const api = {
       body: JSON.stringify({ url }),
     }),
 
-  download: (settings: { url: string; type: string; format: string; quality: string; startTime: number; endTime: number }) =>
+  download: (settings: { 
+    url: string; 
+    type: string; 
+    format?: string; 
+    quality?: string; 
+    startTime?: number; 
+    endTime?: number 
+  }) =>
     request<any>('/api/download', {
       method: 'POST',
       body: JSON.stringify(settings),
@@ -56,4 +57,7 @@ export const api = {
 
   getStatus: (jobId: string) =>
     request<any>(`/api/status/${jobId}`),
+
+  health: () =>
+    request<any>('/api/health'),
 };
