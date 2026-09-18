@@ -3,6 +3,3 @@ dist/
 temp/
 .env
 *.log
-.DS_Store
-.next/
-build/
