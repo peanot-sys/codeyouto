@@ -1,88 +1,96 @@
 # MediaDrop
 
-A modern, responsive media downloader website built with React, Vite, and Tailwind CSS.
+A modern, responsive media downloader that **actually works**. Download YouTube videos and audio directly from your browser.
 
-## Features
+## ✅ What Works Right Now
 
-- **Multi-platform support**: YouTube videos/shorts and Instagram reels
-- **Smart analysis**: Automatically detects platform and retrieves media info
-- **Flexible download**: Choose video or audio with quality options
-- **Precise trimming**: Interactive timeline to select exact start and end points
-- **Preview**: Watch the selected portion before downloading
-- **Theme support**: Light, Dark, and System themes
-- **Fully responsive**: Works on desktop, tablet, and mobile
-- **Privacy-first**: No accounts, no history, temporary files only
+### YouTube (Fully Working)
+- **Real video info** - Title, thumbnail, duration, creator (via Invidious API)
+- **Real video preview** - Embedded YouTube player with start/end time support
+- **Real downloads** - Direct download links for video (MP4) and audio
+- **Multiple qualities** - 360p, 480p, 720p, 1080p (whatever's available)
+- **All URL formats** - Regular videos, Shorts, youtu.be links
+
+### Instagram
+- **Video preview** - Embedded Instagram player
+- **Download** - Limited (Instagram has strong protections)
+
+## How It Works
+
+1. Paste a YouTube URL
+2. The app fetches real video info via Invidious API (through CORS proxy)
+3. Shows thumbnail, title, duration, available qualities
+4. Select video or audio mode
+5. Pick quality
+6. Use the timeline to select start/end (optional)
+7. Preview the selection in the embedded player
+8. Click Download - get a direct download link
 
 ## Tech Stack
 
-- React 18 + TypeScript
-- Vite
-- Tailwind CSS v4
-- Lucide React (icons)
-- Framer Motion (animations)
+- **React 18** + TypeScript
+- **Vite** for fast builds
+- **Tailwind CSS v4** for styling
+- **Invidious API** for YouTube data and stream URLs
+- **CORS Proxy** (corsproxy.io) for browser-based API calls
+- **Lucide React** for icons
 
-## Getting Started
+## How Downloads Work
 
-### Development
+The app uses **Invidious** (open-source YouTube frontend) to:
+1. Get video metadata (title, thumbnail, duration)
+2. Get direct stream URLs for different qualities
+3. Proxy the download through Invidious servers
+
+This means **no backend needed** - it works entirely from the browser!
+
+## Deployment
+
+Already configured for Netlify via GitHub:
+
+```toml
+[build]
+  command = "npm run build"
+  publish = "dist"
+```
+
+## Development
 
 ```bash
 npm install
 npm run dev
 ```
 
-### Build
+## Build
 
 ```bash
 npm run build
 ```
 
-### Environment Variables
+## Limitations
 
-Copy `.env.example` to `.env` and configure:
+- **YouTube**: Works great for most videos. Some age-restricted or private videos may not work.
+- **Instagram**: Preview works, but downloads are limited due to Instagram's protections.
+- **Duration**: If Invidious can't determine duration, defaults to 5 minutes. Adjust timeline manually.
+- **CORS Proxies**: Uses public CORS proxies. If they're down, the app may not work. You can self-host a proxy or Invidious instance.
 
-```
-VITE_API_URL=http://localhost:3000  # Backend API URL
-```
+## Self-Hosting
 
-Leave `VITE_API_URL` empty for demo mode (frontend-only with simulated data).
+For maximum reliability, you can:
 
-## Deployment
+1. **Host your own Invidious instance** and set it as the primary
+2. **Host your own CORS proxy** (e.g., cors-anywhere)
+3. **Deploy a backend** that uses yt-dlp + FFmpeg for processing
 
-The project is configured for Netlify deployment via GitHub integration.
+Edit `src/services/mediaService.ts` to change the Invidious instances and CORS proxies.
 
-- Build command: `npm run build`
-- Publish directory: `dist`
-- SPA redirects configured in `netlify.toml`
+## Privacy
 
-## Backend
-
-The frontend communicates with a backend API for media processing. The backend is responsible for:
-
-- URL validation
-- Media information retrieval (yt-dlp, etc.)
-- Media processing with FFmpeg
-- Trimming and format conversion
-- Temporary file management
-
-### API Endpoints
-
-- `POST /api/analyze` - Analyze a media URL
-- `POST /api/download` - Start a download job
-- `GET /api/status/:jobId` - Check job status
-
-## Project Structure
-
-```
-src/
-├── components/     # UI components
-├── hooks/          # Custom React hooks
-├── services/       # API and media services
-├── types/          # TypeScript type definitions
-├── utils/          # Utility functions
-├── App.tsx         # Main application component
-├── main.tsx        # Entry point
-└── index.css       # Global styles and theme
-```
+- No accounts required
+- No download history stored
+- No personal data collected
+- All processing happens in your browser
+- Temporary API calls only
 
 ## License
 

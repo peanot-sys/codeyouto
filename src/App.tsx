@@ -13,15 +13,21 @@ import { SuccessState } from './components/SuccessState';
 import { ErrorState } from './components/ErrorState';
 import { Footer } from './components/Footer';
 import { useTheme } from './hooks/useTheme';
-import { useMediaInfo } from './hooks/useMediaInfo';
 import { useDownload } from './hooks/useDownload';
-import { MediaType, VideoQuality, AudioFormat, AudioQuality, DownloadSettings } from './types/media';
+import { MediaType, VideoQuality, AudioFormat, AudioQuality, DownloadSettings, MediaInfo, AppStatus } from './types/media';
+import { analyzeMedia } from './services/mediaService';
+import { validateUrl } from './utils/validation';
 import { Eye, EyeOff } from 'lucide-react';
 
 function App() {
   const { theme, toggleTheme } = useTheme();
-  const { status, mediaInfo, error: mediaError, analyze, reset: resetMedia } = useMediaInfo();
   const { isProcessing, result, progress, stage, error: downloadError, download, reset: resetDownload } = useDownload();
+
+  // App state
+  const [status, setStatus] = useState<AppStatus>('idle');
+  const [mediaInfo, setMediaInfo] = useState<MediaInfo | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [lastUrl, setLastUrl] = useState('');
 
   // Media settings state
   const [mediaType, setMediaType] = useState<MediaType>('video');
@@ -31,25 +37,37 @@ function App() {
   const [startTime, setStartTime] = useState(0);
   const [endTime, setEndTime] = useState(0);
   const [previewOnly, setPreviewOnly] = useState(false);
-  const [lastUrl, setLastUrl] = useState('');
+  const [duration, setDuration] = useState(300); // Default 5 minutes if unknown
 
   const handleAnalyze = useCallback(async (url: string) => {
-    setLastUrl(url);
-    await analyze(url);
-  }, [analyze]);
-
-  // Initialize end time when media loads
-  const handleMediaLoaded = useCallback(() => {
-    if (mediaInfo) {
-      setStartTime(0);
-      setEndTime(mediaInfo.duration);
+    const validation = validateUrl(url);
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid URL');
+      setStatus('error');
+      return;
     }
-  }, [mediaInfo]);
 
-  // Call handleMediaLoaded when media info changes
-  if (mediaInfo && endTime === 0 && mediaInfo.duration > 0) {
-    handleMediaLoaded();
-  }
+    setLastUrl(url);
+    setStatus('analyzing');
+    setError(null);
+    setMediaInfo(null);
+
+    try {
+      const info = await analyzeMedia(url);
+      setMediaInfo(info);
+      
+      // Set duration - if unknown (0), use default
+      const mediaDuration = info.duration > 0 ? info.duration : 300;
+      setDuration(mediaDuration);
+      setStartTime(0);
+      setEndTime(mediaDuration);
+      
+      setStatus('media-loaded');
+    } catch (err) {
+      setError('This media could not be accessed. Please check the URL and try again.');
+      setStatus('error');
+    }
+  }, []);
 
   const handleDownload = useCallback(async () => {
     if (!mediaInfo) return;
@@ -62,33 +80,34 @@ function App() {
       endTime,
     };
 
-    await download(mediaInfo.url, settings);
+    await download(mediaInfo, settings);
   }, [mediaInfo, mediaType, audioFormat, videoQuality, audioQuality, startTime, endTime, download]);
 
   const handleDownloadFile = useCallback(() => {
     if (result?.downloadUrl) {
-      window.open(result.downloadUrl, '_blank');
-    } else {
-      // Demo: create a dummy download
-      const blob = new Blob(['Demo file content'], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result?.filename || 'media_clip.mp4';
-      a.click();
-      URL.revokeObjectURL(url);
+      // Create a temporary link and trigger download
+      const link = document.createElement('a');
+      link.href = result.downloadUrl;
+      link.download = result.filename || 'video.mp4';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   }, [result]);
 
   const handleStartOver = useCallback(() => {
-    resetMedia();
+    setStatus('idle');
+    setMediaInfo(null);
+    setError(null);
     resetDownload();
     setMediaType('video');
     setStartTime(0);
     setEndTime(0);
     setPreviewOnly(false);
     setLastUrl('');
-  }, [resetMedia, resetDownload]);
+    setDuration(300);
+  }, [resetDownload]);
 
   const handleRetry = useCallback(() => {
     if (lastUrl) {
@@ -97,9 +116,7 @@ function App() {
     }
   }, [lastUrl, resetDownload, handleAnalyze]);
 
-  const showMediaCard = status === 'analyzing' || (mediaInfo && status !== 'idle');
-  const showOptions = mediaInfo && !isProcessing && !result && status !== 'error';
-  const showError = (status === 'error' && mediaError) || downloadError;
+  const showError = (status === 'error' && error) || downloadError;
 
   return (
     <div className="min-h-screen flex flex-col relative">
@@ -138,7 +155,7 @@ function App() {
             <UrlInput
               onAnalyze={handleAnalyze}
               isAnalyzing={status === 'analyzing'}
-              error={status === 'error' ? mediaError : null}
+              error={status === 'error' ? error : null}
             />
           </div>
         )}
@@ -150,10 +167,18 @@ function App() {
           </div>
         )}
 
-        {/* Media card */}
+        {/* Media card and options */}
         {mediaInfo && !isProcessing && !result && (
           <div className="space-y-6">
             <MediaCard media={mediaInfo} />
+
+            {/* Duration notice for YouTube */}
+            {mediaInfo.platform === 'youtube' && mediaInfo.duration === 0 && (
+              <div className="glass-card-sm p-3 flex items-center gap-2 text-sm animate-fade-in" style={{ color: 'var(--text-secondary)' }}>
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                Duration not available. Default set to 5 minutes. Adjust the timeline as needed.
+              </div>
+            )}
 
             {/* Media type selector */}
             <MediaTypeSelector selected={mediaType} onChange={setMediaType} />
@@ -178,7 +203,7 @@ function App() {
 
             {/* Timeline editor */}
             <TimelineEditor
-              duration={mediaInfo.duration}
+              duration={duration}
               startTime={startTime}
               endTime={endTime}
               onStartChange={setStartTime}
@@ -204,7 +229,7 @@ function App() {
               </button>
             </div>
 
-            {/* Media preview */}
+            {/* Media preview - real embed */}
             <MediaPreview
               media={mediaInfo}
               startTime={startTime}
@@ -225,6 +250,13 @@ function App() {
               onDownload={handleDownload}
               isProcessing={isProcessing}
             />
+
+            {/* Info notice */}
+            <div className="glass-card-sm p-4 text-center animate-fade-in">
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                💡 Powered by Invidious. Supports YouTube videos, shorts, and music.
+              </p>
+            </div>
           </div>
         )}
 
@@ -246,7 +278,7 @@ function App() {
         {showError && !isProcessing && (
           <div className="mt-6">
             <ErrorState
-              error={downloadError || mediaError || 'An error occurred'}
+              error={downloadError || error || 'An error occurred'}
               onRetry={lastUrl ? handleRetry : undefined}
               onStartOver={handleStartOver}
             />

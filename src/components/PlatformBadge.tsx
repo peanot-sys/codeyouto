@@ -1,12 +1,18 @@
 import { Platform } from '../types/media';
-import { getPlatformLabel } from '../utils/platform';
+import { isShortUrl } from '../utils/platform';
 
 interface PlatformBadgeProps {
   platform: Platform;
+  url?: string;
 }
 
-export function PlatformBadge({ platform }: PlatformBadgeProps) {
+export function PlatformBadge({ platform, url }: PlatformBadgeProps) {
   const isYoutube = platform === 'youtube';
+  const isShort = url ? isShortUrl(url) : false;
+  
+  const label = isYoutube 
+    ? (isShort ? 'YouTube Short' : 'YouTube')
+    : (isShort ? 'Instagram Reel' : 'Instagram');
   
   return (
     <span
@@ -21,7 +27,7 @@ export function PlatformBadge({ platform }: PlatformBadgeProps) {
         className="w-1.5 h-1.5 rounded-full"
         style={{ background: isYoutube ? '#ef4444' : '#e1306c' }}
       />
-      {getPlatformLabel(platform)}
+      {label}
     </span>
   );
 }

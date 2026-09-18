@@ -1,6 +1,7 @@
-import { DownloadSettings, MediaInfo, Platform } from '../types/media';
+import { DownloadSettings, MediaInfo } from '../types/media';
 import { formatTime } from '../utils/time';
 import { getPlatformLabel } from '../utils/platform';
+import { isShortUrl } from '../utils/platform';
 import { Download, Film, Music } from 'lucide-react';
 
 interface DownloadSummaryProps {
@@ -11,8 +12,16 @@ interface DownloadSummaryProps {
 }
 
 export function DownloadSummary({ media, settings, onDownload, isProcessing }: DownloadSummaryProps) {
+  const getSourceLabel = () => {
+    const base = getPlatformLabel(media.platform);
+    if (isShortUrl(media.url)) {
+      return media.platform === 'youtube' ? 'YouTube Short' : 'Instagram Reel';
+    }
+    return base;
+  };
+
   const rows = [
-    { label: 'Source', value: getPlatformLabel(media.platform) },
+    { label: 'Source', value: getSourceLabel() },
     { label: 'Type', value: settings.type === 'video' ? 'Video' : 'Audio' },
     { label: 'Format', value: settings.type === 'video' ? 'MP4' : settings.format.toUpperCase() },
     { label: 'Quality', value: settings.quality },
